@@ -22,7 +22,7 @@ type commands struct {
 func (c *commands) run(s *state, cmd command) error {
 	err := c.handlers[cmd.name](s, cmd)
 	if err != nil {
-		fmt.Println("Error running command handler function")
+		// fmt.Println("Error running command handler function")
 		return err
 	}
 	return nil
@@ -33,11 +33,11 @@ func (c *commands) register(name string, f func(s *state, cmd command) error) {
 }
 
 func handlerLogin(s *state, cmd command) error {
-	if len(cmd.args) != 3 {
+	if len(cmd.args) != 2 {
 		return fmt.Errorf("Username is required")
 	}
 
-	newUsername := cmd.args[2]
+	newUsername := cmd.args[1]
 
 	err := s.config.SetUser(newUsername)
 	if err != nil {
@@ -73,7 +73,7 @@ func main() {
 
 	currentCommand := command{
 		name: currentArgs[1],
-		args: currentArgs,
+		args: currentArgs[1:],
 	}
 
 	err = currentCommands.run(&currentState, currentCommand)
