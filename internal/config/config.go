@@ -2,13 +2,13 @@ package config
 
 import (
 	"encoding/json"
+	// "fmt"
 	"os"
-	"syscall"
 )
 
 type Config struct {
-	DbUrl           string
-	CurrentUserName string
+	DbUrl           string `json:"db_url"`
+	CurrentUserName string `json:"current_username"`
 }
 
 func (c *Config) SetUser(username string) error {
@@ -33,7 +33,8 @@ func write(c Config) error {
 	if err != nil {
 		return err
 	}
-	err = os.WriteFile(filepath, configData, syscall.O_RDWR)
+
+	err = os.WriteFile(filepath, configData, 0644)
 	if err != nil {
 		return err
 	}
@@ -61,7 +62,7 @@ func Read() (*Config, error) {
 		return nil, err
 	}
 
-	currentConfig := Config{}
+	var currentConfig Config
 
 	err = json.Unmarshal(fileContents, &currentConfig)
 	if err != nil {
