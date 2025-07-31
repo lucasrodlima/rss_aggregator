@@ -34,7 +34,7 @@ func (c *commands) register(name string, f func(s *state, cmd command) error) {
 
 func handlerLogin(s *state, cmd command) error {
 	if len(cmd.args) != 3 {
-		return fmt.Errorf("Login must have one argument (username)")
+		return fmt.Errorf("Username is required")
 	}
 
 	newUsername := cmd.args[2]
@@ -67,7 +67,7 @@ func main() {
 
 	currentArgs := os.Args
 	if len(currentArgs) < 2 {
-		fmt.Println("Less than 2 arguments")
+		fmt.Println("Not enough arguments were provided")
 		return
 	}
 
