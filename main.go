@@ -52,7 +52,7 @@ func main() {
 	sysConfig, err := config.Read()
 	if err != nil {
 		fmt.Println(err)
-		return
+		os.Exit(1)
 	}
 
 	currentState := state{
@@ -68,7 +68,7 @@ func main() {
 	currentArgs := os.Args
 	if len(currentArgs) < 2 {
 		fmt.Println("Not enough arguments were provided")
-		return
+		os.Exit(1)
 	}
 
 	currentCommand := command{
@@ -79,5 +79,6 @@ func main() {
 	err = currentCommands.run(&currentState, currentCommand)
 	if err != nil {
 		fmt.Println(err)
+		os.Exit(1)
 	}
 }
