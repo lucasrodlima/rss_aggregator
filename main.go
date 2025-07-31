@@ -48,7 +48,8 @@ func (c *commands) register(name string, f func(s *state, cmd command) error) {
 func handlerReset(s *state, cmd command) error {
 	err := s.db.DeleteAllUsers(context.Background())
 	if err != nil {
-		return err
+		fmt.Println("Error resetting database")
+		os.Exit(1)
 	}
 
 	fmt.Println("Database reset!")
