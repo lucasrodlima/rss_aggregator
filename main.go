@@ -50,11 +50,19 @@ func handlerRegister(s *state, cmd command) error {
 		return fmt.Errorf("Username is required")
 	}
 
+	username := cmd.args[1]
+
+	_, err := s.db.GetUser(context.Background(), username)
+	if err == nil {
+		fmt.Printf("User %s already exists, use command \"login\"\n", username)
+		os.Exit(1)
+	}
+
 	newUser, err := s.db.CreateUser(context.Background(), database.CreateUserParams{
 		ID:        uuid.New(),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		Name:      cmd.args[1],
+		Name:      username,
 	})
 	if err != nil {
 		return nil
