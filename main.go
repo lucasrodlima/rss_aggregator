@@ -45,6 +45,17 @@ func (c *commands) register(name string, f func(s *state, cmd command) error) {
 	c.handlers[name] = f
 }
 
+func handlerReset(s *state, cmd command) error {
+	err := s.db.DeleteAllUsers(context.Background())
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Database reset!")
+
+	return nil
+}
+
 func handlerRegister(s *state, cmd command) error {
 	if len(cmd.args) != 2 {
 		return fmt.Errorf("Username is required")
@@ -65,7 +76,7 @@ func handlerRegister(s *state, cmd command) error {
 		Name:      username,
 	})
 	if err != nil {
-		return nil
+		return err
 	}
 
 	err = s.cfg.SetUser(newUser.Name)
@@ -126,6 +137,7 @@ func main() {
 
 	currentCommands.register("login", handlerLogin)
 	currentCommands.register("register", handlerRegister)
+	currentCommands.register("reset", handlerReset)
 
 	currentArgs := os.Args
 	if len(currentArgs) < 2 {
