@@ -45,6 +45,23 @@ func (c *commands) register(name string, f func(s *state, cmd command) error) {
 	c.handlers[name] = f
 }
 
+func handlerUsers(s *state, cmd command) error {
+	users, err := s.db.GetUsers(context.Background())
+	if err != nil {
+		fmt.Println("Error retrieving all users")
+		os.Exit(1)
+	}
+
+	for _, user := range users {
+		if user.Name == s.cfg.CurrentUserName {
+			fmt.Printf(" * %s (current)\n", user.Name)
+		} else {
+			fmt.Printf(" * %s\n", user.Name)
+		}
+	}
+	return nil
+}
+
 func handlerReset(s *state, cmd command) error {
 	err := s.db.DeleteAllUsers(context.Background())
 	if err != nil {
@@ -139,6 +156,7 @@ func main() {
 	currentCommands.register("login", handlerLogin)
 	currentCommands.register("register", handlerRegister)
 	currentCommands.register("reset", handlerReset)
+	currentCommands.register("users", handlerUsers)
 
 	currentArgs := os.Args
 	if len(currentArgs) < 2 {
