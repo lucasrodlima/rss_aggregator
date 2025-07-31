@@ -1,13 +1,21 @@
 package main
 
+import _ "github.com/lib/pq"
+
 import (
+	"context"
+	"database/sql"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/lucasrodlima/rss_aggregator/internal/config"
+	"github.com/lucasrodlima/rss_aggregator/internal/database"
 	"os"
+	"time"
 )
 
 type state struct {
-	config *config.Config
+	cfg *config.Config
+	db  *database.Queries
 }
 
 type command struct {
@@ -20,9 +28,14 @@ type commands struct {
 }
 
 func (c *commands) run(s *state, cmd command) error {
-	err := c.handlers[cmd.name](s, cmd)
+	handlerFunc, ok := c.handlers[cmd.name]
+	if !ok {
+		fmt.Println("Non existent command")
+		os.Exit(1)
+	}
+
+	err := handlerFunc(s, cmd)
 	if err != nil {
-		// fmt.Println("Error running command handler function")
 		return err
 	}
 	return nil
@@ -32,19 +45,54 @@ func (c *commands) register(name string, f func(s *state, cmd command) error) {
 	c.handlers[name] = f
 }
 
+func handlerRegister(s *state, cmd command) error {
+	if len(cmd.args) != 2 {
+		return fmt.Errorf("Username is required")
+	}
+
+	newUser, err := s.db.CreateUser(context.Background(), database.CreateUserParams{
+		ID:        uuid.New(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Name:      cmd.args[1],
+	})
+	if err != nil {
+		return nil
+	}
+
+	err = s.cfg.SetUser(newUser.Name)
+	if err != nil {
+		fmt.Printf("Error setting new user\n")
+		os.Exit(1)
+	}
+
+	fmt.Printf("User %s created successfully\n", newUser.Name)
+
+	fmt.Printf("ID: %v\nCreatedAt: %v\nUpdatedAt: %v\nName: %v\n",
+		newUser.ID, newUser.CreatedAt, newUser.UpdatedAt, newUser.Name)
+
+	return nil
+}
+
 func handlerLogin(s *state, cmd command) error {
 	if len(cmd.args) != 2 {
 		return fmt.Errorf("Username is required")
 	}
 
-	newUsername := cmd.args[1]
+	username := cmd.args[1]
 
-	err := s.config.SetUser(newUsername)
+	_, err := s.db.GetUser(context.Background(), username)
+	if err != nil {
+		fmt.Printf("User %s doesn't exist\n", username)
+		os.Exit(1)
+	}
+
+	err = s.cfg.SetUser(username)
 	if err != nil {
 		return fmt.Errorf("Error setting new user")
 	}
 
-	fmt.Printf("Login successful as %s!\n", newUsername)
+	fmt.Printf("Login successful as %s!\n", username)
 	return nil
 }
 
@@ -55,8 +103,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	currentDb, err := sql.Open("postgres", sysConfig.DbUrl)
+
+	dbQueries := database.New(currentDb)
+
 	currentState := state{
-		config: sysConfig,
+		cfg: sysConfig,
+		db:  dbQueries,
 	}
 
 	currentCommands := commands{
@@ -64,6 +117,7 @@ func main() {
 	}
 
 	currentCommands.register("login", handlerLogin)
+	currentCommands.register("register", handlerRegister)
 
 	currentArgs := os.Args
 	if len(currentArgs) < 2 {
