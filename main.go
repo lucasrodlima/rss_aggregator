@@ -87,6 +87,14 @@ func handlerAddFeed(s *state, cmd command) error {
 		UserID:    currentUser.ID,
 	})
 
+	_, err = s.db.CreateFeedFollow(context.Background(), database.CreateFeedFollowParams{
+		ID:        uuid.New(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		UserID:    currentUser.ID,
+		FeedID:    newFeed.ID,
+	})
+
 	fmt.Printf("ID: %v\nCreatedAt: %v\nUpdatedAt: %v\nName: %v\nUrl: %v\nUserID: %v",
 		newFeed.ID, newFeed.CreatedAt, newFeed.UpdatedAt, newFeed.Name, newFeed.Url, newFeed.UserID)
 
@@ -204,6 +212,7 @@ func fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer res.Body.Close()
 
 	xmlData, err := io.ReadAll(res.Body)
 	if err != nil {
