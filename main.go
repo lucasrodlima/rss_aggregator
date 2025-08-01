@@ -228,6 +228,18 @@ func fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
 	return &feed, nil
 }
 
+func handlerFeeds(s *state, cmd command) error {
+	feeds, err := s.db.GetFeeds(context.Background())
+	if err != nil {
+		return err
+	}
+
+	for _, feed := range feeds {
+		fmt.Printf("%v:\nURL: %v\nUser: %v\n\n", feed.Name, feed.Url, feed.User.String)
+	}
+	return nil
+}
+
 func main() {
 	sysConfig, err := config.Read()
 	if err != nil {
@@ -254,6 +266,7 @@ func main() {
 	currentCommands.register("users", handlerUsers)
 	currentCommands.register("agg", handlerAgg)
 	currentCommands.register("addfeed", handlerAddFeed)
+	currentCommands.register("feeds", handlerFeeds)
 
 	currentArgs := os.Args
 	if len(currentArgs) < 2 {
