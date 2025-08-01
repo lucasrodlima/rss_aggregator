@@ -240,6 +240,37 @@ func handlerFeeds(s *state, cmd command) error {
 	return nil
 }
 
+func handlerFollow(s *state, cmd command) error {
+	url := cmd.args[1]
+	username := s.cfg.CurrentUserName
+	ctx := context.Background()
+
+	user, err := s.db.GetUser(ctx, username)
+	if err != nil {
+		return err
+	}
+
+	feed, err := s.db.GetFeed(ctx, url)
+	if err != nil {
+		return err
+	}
+
+	newFeedFollow, err := s.db.CreateFeedFollow(ctx, database.CreateFeedFollowParams{
+		ID:        uuid.New(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		UserID:    user.ID,
+		FeedID:    feed.ID,
+	})
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("New follow added successfully:\nID: %v\nCreatedAt: %v\nUpdatedAt: %v\nUserID: %v\nFeedID: %v\n",
+		newFeedFollow.ID, newFeedFollow.CreatedAt, newFeedFollow.UpdatedAt, newFeedFollow.UserID, newFeedFollow.FeedID)
+	return nil
+}
+
 func main() {
 	sysConfig, err := config.Read()
 	if err != nil {
@@ -267,6 +298,7 @@ func main() {
 	currentCommands.register("agg", handlerAgg)
 	currentCommands.register("addfeed", handlerAddFeed)
 	currentCommands.register("feeds", handlerFeeds)
+	currentCommands.register("follow", handlerFollow)
 
 	currentArgs := os.Args
 	if len(currentArgs) < 2 {
