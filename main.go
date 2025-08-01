@@ -65,7 +65,22 @@ func (c *commands) register(name string, f func(s *state, cmd command) error) {
 	c.handlers[name] = f
 }
 
-func handlerAddFeed(s *state, cmd command) error {
+func middlewareLoggedIn(handler func(s *state, cmd command, user database.User) error) func(s *state, cmd command) error {
+	return func(s *state, cmd command) error {
+		currentUser, err := s.db.GetUser(context.Background(), s.cfg.CurrentUserName)
+		if err != nil {
+			return err
+		}
+
+		err = handler(s, cmd, currentUser)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+}
+
+func handlerAddFeed(s *state, cmd command, user database.User) error {
 	if len(cmd.args) != 3 {
 		return fmt.Errorf("Enter name and url of feed as arguments")
 	}
@@ -73,27 +88,28 @@ func handlerAddFeed(s *state, cmd command) error {
 	name := cmd.args[1]
 	url := cmd.args[2]
 
-	currentUser, err := s.db.GetUser(context.Background(), s.cfg.CurrentUserName)
-	if err != nil {
-		return err
-	}
-
 	newFeed, err := s.db.CreateFeed(context.Background(), database.CreateFeedParams{
 		ID:        uuid.New(),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 		Name:      name,
 		Url:       url,
-		UserID:    currentUser.ID,
+		UserID:    user.ID,
 	})
+	if err != nil {
+		return nil
+	}
 
 	_, err = s.db.CreateFeedFollow(context.Background(), database.CreateFeedFollowParams{
 		ID:        uuid.New(),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
-		UserID:    currentUser.ID,
+		UserID:    user.ID,
 		FeedID:    newFeed.ID,
 	})
+	if err != nil {
+		return nil
+	}
 
 	fmt.Printf("ID: %v\nCreatedAt: %v\nUpdatedAt: %v\nName: %v\nUrl: %v\nUserID: %v",
 		newFeed.ID, newFeed.CreatedAt, newFeed.UpdatedAt, newFeed.Name, newFeed.Url, newFeed.UserID)
@@ -249,15 +265,9 @@ func handlerFeeds(s *state, cmd command) error {
 	return nil
 }
 
-func handlerFollow(s *state, cmd command) error {
+func handlerFollow(s *state, cmd command, user database.User) error {
 	url := cmd.args[1]
-	username := s.cfg.CurrentUserName
 	ctx := context.Background()
-
-	user, err := s.db.GetUser(ctx, username)
-	if err != nil {
-		return err
-	}
 
 	feed, err := s.db.GetFeed(ctx, url)
 	if err != nil {
@@ -280,14 +290,9 @@ func handlerFollow(s *state, cmd command) error {
 	return nil
 }
 
-func handlerFollowing(s *state, cmd command) error {
+func handlerFollowing(s *state, cmd command, user database.User) error {
 	ctx := context.Background()
 	username := s.cfg.CurrentUserName
-
-	user, err := s.db.GetUser(ctx, username)
-	if err != nil {
-		return err
-	}
 
 	follows, err := s.db.GetFollowsForUser(ctx, user.ID)
 	if err != nil {
@@ -327,10 +332,10 @@ func main() {
 	currentCommands.register("reset", handlerReset)
 	currentCommands.register("users", handlerUsers)
 	currentCommands.register("agg", handlerAgg)
-	currentCommands.register("addfeed", handlerAddFeed)
+	currentCommands.register("addfeed", middlewareLoggedIn(handlerAddFeed))
 	currentCommands.register("feeds", handlerFeeds)
-	currentCommands.register("follow", handlerFollow)
-	currentCommands.register("following", handlerFollowing)
+	currentCommands.register("follow", middlewareLoggedIn(handlerFollow))
+	currentCommands.register("following", middlewareLoggedIn(handlerFollowing))
 
 	currentArgs := os.Args
 	if len(currentArgs) < 2 {
