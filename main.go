@@ -271,6 +271,28 @@ func handlerFollow(s *state, cmd command) error {
 	return nil
 }
 
+func handlerFollowing(s *state, cmd command) error {
+	ctx := context.Background()
+	username := s.cfg.CurrentUserName
+
+	user, err := s.db.GetUser(ctx, username)
+	if err != nil {
+		return err
+	}
+
+	follows, err := s.db.GetFollowsForUser(ctx, user.ID)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("%s (current user) is following:\n", username)
+	for _, follow := range follows {
+		fmt.Printf(" * %s\n", follow.FeedName)
+	}
+
+	return nil
+}
+
 func main() {
 	sysConfig, err := config.Read()
 	if err != nil {
@@ -299,6 +321,7 @@ func main() {
 	currentCommands.register("addfeed", handlerAddFeed)
 	currentCommands.register("feeds", handlerFeeds)
 	currentCommands.register("follow", handlerFollow)
+	currentCommands.register("following", handlerFollowing)
 
 	currentArgs := os.Args
 	if len(currentArgs) < 2 {
