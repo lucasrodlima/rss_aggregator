@@ -65,6 +65,34 @@ func (c *commands) register(name string, f func(s *state, cmd command) error) {
 	c.handlers[name] = f
 }
 
+func handlerAddFeed(s *state, cmd command) error {
+	if len(cmd.args) != 3 {
+		return fmt.Errorf("Enter name and url of feed as arguments")
+	}
+
+	name := cmd.args[1]
+	url := cmd.args[2]
+
+	currentUser, err := s.db.GetUser(context.Background(), s.cfg.CurrentUserName)
+	if err != nil {
+		return err
+	}
+
+	newFeed, err := s.db.CreateFeed(context.Background(), database.CreateFeedParams{
+		ID:        uuid.New(),
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Name:      name,
+		Url:       url,
+		UserID:    currentUser.ID,
+	})
+
+	fmt.Printf("ID: %v\nCreatedAt: %v\nUpdatedAt: %v\nName: %v\nUrl: %v\nUserID: %v",
+		newFeed.ID, newFeed.CreatedAt, newFeed.UpdatedAt, newFeed.Name, newFeed.Url, newFeed.UserID)
+
+	return nil
+}
+
 func handlerUsers(s *state, cmd command) error {
 	users, err := s.db.GetUsers(context.Background())
 	if err != nil {
@@ -137,14 +165,6 @@ func handlerAgg(s *state, cmd command) error {
 		return fmt.Errorf("Error fetching feed")
 	}
 
-	feed.Channel.Title = html.UnescapeString(feed.Channel.Title)
-	feed.Channel.Description = html.UnescapeString(feed.Channel.Description)
-
-	for _, item := range feed.Channel.Items {
-		item.Title = html.UnescapeString(item.Title)
-		item.Description = html.UnescapeString(item.Description)
-	}
-
 	fmt.Println(feed)
 	return nil
 }
@@ -197,6 +217,14 @@ func fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
 		return nil, err
 	}
 
+	feed.Channel.Title = html.UnescapeString(feed.Channel.Title)
+	feed.Channel.Description = html.UnescapeString(feed.Channel.Description)
+
+	for _, item := range feed.Channel.Items {
+		item.Title = html.UnescapeString(item.Title)
+		item.Description = html.UnescapeString(item.Description)
+	}
+
 	return &feed, nil
 }
 
@@ -225,6 +253,7 @@ func main() {
 	currentCommands.register("reset", handlerReset)
 	currentCommands.register("users", handlerUsers)
 	currentCommands.register("agg", handlerAgg)
+	currentCommands.register("addfeed", handlerAddFeed)
 
 	currentArgs := os.Args
 	if len(currentArgs) < 2 {
