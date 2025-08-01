@@ -1,16 +1,20 @@
 package main
 
-import _ "github.com/lib/pq"
-
 import (
 	"context"
 	"database/sql"
+	"encoding/xml"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/lucasrodlima/rss_aggregator/internal/config"
-	"github.com/lucasrodlima/rss_aggregator/internal/database"
+	"html"
+	"io"
+	"net/http"
 	"os"
 	"time"
+
+	"github.com/google/uuid"
+	_ "github.com/lib/pq"
+	"github.com/lucasrodlima/rss_aggregator/internal/config"
+	"github.com/lucasrodlima/rss_aggregator/internal/database"
 )
 
 type state struct {
@@ -25,6 +29,22 @@ type command struct {
 
 type commands struct {
 	handlers map[string]func(*state, command) error
+}
+
+type RSSFeed struct {
+	Channel struct {
+		Title       string    `xml:"title"`
+		Link        string    `xml:"link"`
+		Description string    `xml:"description"`
+		Items       []RSSItem `xml:"item"`
+	} `xml:"channel"`
+}
+
+type RSSItem struct {
+	Title       string `xml:"title"`
+	Link        string `xml:"link"`
+	Description string `xml:"description"`
+	PubDate     string `xml:"pubDate"`
 }
 
 func (c *commands) run(s *state, cmd command) error {
@@ -111,6 +131,24 @@ func handlerRegister(s *state, cmd command) error {
 	return nil
 }
 
+func handlerAgg(s *state, cmd command) error {
+	feed, err := fetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
+	if err != nil {
+		return fmt.Errorf("Error fetching feed")
+	}
+
+	feed.Channel.Title = html.UnescapeString(feed.Channel.Title)
+	feed.Channel.Description = html.UnescapeString(feed.Channel.Description)
+
+	for _, item := range feed.Channel.Items {
+		item.Title = html.UnescapeString(item.Title)
+		item.Description = html.UnescapeString(item.Description)
+	}
+
+	fmt.Println(feed)
+	return nil
+}
+
 func handlerLogin(s *state, cmd command) error {
 	if len(cmd.args) != 2 {
 		return fmt.Errorf("Username is required")
@@ -131,6 +169,35 @@ func handlerLogin(s *state, cmd command) error {
 
 	fmt.Printf("Login successful as %s!\n", username)
 	return nil
+}
+
+func fetchFeed(ctx context.Context, feedURL string) (*RSSFeed, error) {
+	req, err := http.NewRequestWithContext(ctx, "GET", feedURL, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("User-Agent", "gator")
+
+	newClient := http.DefaultClient
+	res, err := newClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	xmlData, err := io.ReadAll(res.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	feed := RSSFeed{}
+
+	err = xml.Unmarshal(xmlData, &feed)
+	if err != nil {
+		return nil, err
+	}
+
+	return &feed, nil
 }
 
 func main() {
@@ -157,6 +224,7 @@ func main() {
 	currentCommands.register("register", handlerRegister)
 	currentCommands.register("reset", handlerReset)
 	currentCommands.register("users", handlerUsers)
+	currentCommands.register("agg", handlerAgg)
 
 	currentArgs := os.Args
 	if len(currentArgs) < 2 {
