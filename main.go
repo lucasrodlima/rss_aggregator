@@ -307,6 +307,19 @@ func handlerFollowing(s *state, cmd command, user database.User) error {
 	return nil
 }
 
+func handlerUnfollow(s *state, cmd command, user database.User) error {
+	err := s.db.DeleteFollow(context.Background(), database.DeleteFollowParams{
+		Name: user.Name,
+		Url:  cmd.args[1],
+	})
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Follow removed")
+	return nil
+}
+
 func main() {
 	sysConfig, err := config.Read()
 	if err != nil {
@@ -336,6 +349,7 @@ func main() {
 	currentCommands.register("feeds", handlerFeeds)
 	currentCommands.register("follow", middlewareLoggedIn(handlerFollow))
 	currentCommands.register("following", middlewareLoggedIn(handlerFollowing))
+	currentCommands.register("unfollow", middlewareLoggedIn(handlerUnfollow))
 
 	currentArgs := os.Args
 	if len(currentArgs) < 2 {
