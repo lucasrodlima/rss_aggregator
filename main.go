@@ -185,6 +185,10 @@ func handlerRegister(s *state, cmd command) error {
 }
 
 func handlerAgg(s *state, cmd command) error {
+	if len(cmd.args) != 2 {
+		return fmt.Errorf("wrong args number")
+	}
+
 	timeInput := cmd.args[1]
 
 	time_between_reqs, err := time.ParseDuration(timeInput)
@@ -368,15 +372,35 @@ func scrapeFeeds(s *state) error {
 				String: item.PubDate,
 				Valid:  true,
 			},
+			FeedID: nextFeed.ID,
 		})
 		if err != nil {
 			if strings.Contains(err.Error(), "posts_url_key") {
-				fmt.Printf("post created - %s\n", item.Title)
 				continue
 			}
 			return err
 		}
 		fmt.Printf("post created - %s\n", item.Title)
+	}
+
+	return nil
+}
+
+func handlerBrowse(s *state, cmd command, user database.User) error {
+
+	posts, err := s.db.GetPostsForUser(context.Background(), database.GetPostsForUserParams{
+		UserID: user.ID,
+		Limit:  int32(2),
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, post := range posts {
+		fmt.Printf("* %s\n", post.Title)
+		fmt.Printf("  %s\n", post.Description.String)
+		fmt.Printf("  Published: %s\n", post.PublishedAt.String)
+		fmt.Printf("  URL: %s\n\n", post.Url)
 	}
 
 	return nil
@@ -412,6 +436,7 @@ func main() {
 	currentCommands.register("follow", middlewareLoggedIn(handlerFollow))
 	currentCommands.register("following", middlewareLoggedIn(handlerFollowing))
 	currentCommands.register("unfollow", middlewareLoggedIn(handlerUnfollow))
+	currentCommands.register("browse", middlewareLoggedIn(handlerBrowse))
 
 	currentArgs := os.Args
 	if len(currentArgs) < 2 {

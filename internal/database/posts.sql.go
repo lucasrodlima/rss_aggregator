@@ -45,7 +45,7 @@ type CreatePostParams struct {
 	Url         string
 	Description sql.NullString
 	PublishedAt sql.NullString
-	FeedID      uuid.NullUUID
+	FeedID      uuid.UUID
 }
 
 func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, error) {
