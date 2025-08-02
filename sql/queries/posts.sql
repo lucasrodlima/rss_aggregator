@@ -24,10 +24,10 @@ RETURNING *;
 -- name: GetPostsForUser :many
 SELECT *
 FROM posts
-WHERE feed_in IN (
-    SELECT id
-    FROM feeds
+WHERE feed_id IN (
+    SELECT feed_id
+    FROM feed_follows
     WHERE user_id = $1
 )
-ORDER BY created_at
+ORDER BY created_at DESC
 LIMIT $2;

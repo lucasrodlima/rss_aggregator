@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -369,6 +370,10 @@ func scrapeFeeds(s *state) error {
 			},
 		})
 		if err != nil {
+			if strings.Contains(err.Error(), "posts_url_key") {
+				fmt.Printf("post created - %s\n", item.Title)
+				continue
+			}
 			return err
 		}
 		fmt.Printf("post created - %s\n", item.Title)
