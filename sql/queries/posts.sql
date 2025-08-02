@@ -29,5 +29,5 @@ WHERE feed_in IN (
     FROM feeds
     WHERE user_id = $1
 )
-ORDER BY published_at
+ORDER BY created_at
 LIMIT $2;
