@@ -184,13 +184,22 @@ func handlerRegister(s *state, cmd command) error {
 }
 
 func handlerAgg(s *state, cmd command) error {
-	feed, err := fetchFeed(context.Background(), "https://www.wagslane.dev/index.xml")
+	timeInput := cmd.args[1]
+
+	time_between_reqs, err := time.ParseDuration(timeInput)
 	if err != nil {
-		return fmt.Errorf("Error fetching feed")
+		return err
 	}
 
-	fmt.Println(feed)
-	return nil
+	fmt.Printf("Collecting feeeds every %s\n", timeInput)
+
+	for ; ; <-time.Tick(time_between_reqs) {
+		err := scrapeFeeds(s)
+		if err != nil {
+			return err
+		}
+	}
+
 }
 
 func handlerLogin(s *state, cmd command) error {
@@ -317,6 +326,37 @@ func handlerUnfollow(s *state, cmd command, user database.User) error {
 	}
 
 	fmt.Println("Follow removed")
+	return nil
+}
+
+func scrapeFeeds(s *state) error {
+	nextFeed, err := s.db.GetNextFeedToFetch(context.Background())
+	if err != nil {
+		return err
+	}
+
+	err = s.db.MarkFeedFetched(context.Background(), database.MarkFeedFetchedParams{
+		LastFetchedAt: sql.NullTime{
+			Time:  time.Now(),
+			Valid: true,
+		},
+		UpdatedAt: time.Now(),
+		ID:        nextFeed.ID,
+	})
+	if err != nil {
+		return err
+	}
+
+	rssFeed, err := fetchFeed(context.Background(), nextFeed.Url)
+	if err != nil {
+		return nil
+	}
+
+	fmt.Printf("Feed Title: %s\n", rssFeed.Channel.Title)
+	for _, item := range rssFeed.Channel.Items {
+		fmt.Printf(" * %s\n", item.Title)
+	}
+
 	return nil
 }
 
