@@ -1,4 +1,4 @@
-module github.com/lucasrodlima/rss_aggregator
+module github.com/lucasrodlima/gator
 
 go 1.24.5
 

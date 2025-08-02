@@ -15,8 +15,8 @@ import (
 
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
-	"github.com/lucasrodlima/rss_aggregator/internal/config"
-	"github.com/lucasrodlima/rss_aggregator/internal/database"
+	"github.com/lucasrodlima/gator/internal/config"
+	"github.com/lucasrodlima/gator/internal/database"
 )
 
 type state struct {
