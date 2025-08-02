@@ -20,3 +20,14 @@ VALUES (
     $8
 )
 RETURNING *;
+
+-- name: GetPostsForUser :many
+SELECT *
+FROM posts
+WHERE feed_in IN (
+    SELECT id
+    FROM feeds
+    WHERE user_id = $1
+)
+ORDER BY published_at
+LIMIT $2;
