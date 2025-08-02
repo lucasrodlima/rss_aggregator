@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -387,10 +388,16 @@ func scrapeFeeds(s *state) error {
 }
 
 func handlerBrowse(s *state, cmd command, user database.User) error {
+	var limit int64
+	if len(cmd.args) != 2 {
+		limit = 2
+	} else {
+		limit, _ = strconv.ParseInt(cmd.args[1], 10, 32)
+	}
 
 	posts, err := s.db.GetPostsForUser(context.Background(), database.GetPostsForUserParams{
 		UserID: user.ID,
-		Limit:  int32(2),
+		Limit:  int32(limit),
 	})
 	if err != nil {
 		return err
